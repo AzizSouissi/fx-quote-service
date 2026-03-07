@@ -42,11 +42,11 @@ graph LR
     B --> A
 ```
 
-| Layer | Technology | Responsibility |
-|-------|-----------|----------------|
-| **Backend** | Node.js, AWS Lambda | Validates input, calculates FX quote, returns JSON response |
-| **Mobile** | React Native, Expo | Single-screen UI for requesting and displaying quotes |
-| **API Contract** | OpenAPI 3.0 | Formal specification of the `POST /quotes` endpoint |
+| Layer            | Technology          | Responsibility                                              |
+| ---------------- | ------------------- | ----------------------------------------------------------- |
+| **Backend**      | Node.js, AWS Lambda | Validates input, calculates FX quote, returns JSON response |
+| **Mobile**       | React Native, Expo  | Single-screen UI for requesting and displaying quotes       |
+| **API Contract** | OpenAPI 3.0         | Formal specification of the `POST /quotes` endpoint         |
 
 ---
 
@@ -99,11 +99,11 @@ graph TD
     classDef util fill:#f5a623,stroke:#c9871a,color:#fff
 ```
 
-| Module | Role |
-|--------|------|
-| `quoteHandler.js` | AWS Lambda entry point — parses HTTP event, validates input, returns HTTP response |
-| `quoteService.js` | Pure business logic — computes fee, applies FX rate, builds quote object |
-| `fxRates.js` | Data layer — provides exchange rates and fee schedule (static lookup, simulating an external service) |
+| Module            | Role                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `quoteHandler.js` | AWS Lambda entry point — parses HTTP event, validates input, returns HTTP response                    |
+| `quoteService.js` | Pure business logic — computes fee, applies FX rate, builds quote object                              |
+| `fxRates.js`      | Data layer — provides exchange rates and fee schedule (static lookup, simulating an external service) |
 
 ---
 
@@ -179,10 +179,10 @@ handler({
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `amount` | `number` | Yes | Amount to send (must be positive) |
-| `currency` | `string` | Yes | ISO 4217 source currency code (e.g. `EUR`, `USD`, `GBP`) |
+| Field      | Type     | Required | Description                                              |
+| ---------- | -------- | -------- | -------------------------------------------------------- |
+| `amount`   | `number` | Yes      | Amount to send (must be positive)                        |
+| `currency` | `string` | Yes      | ISO 4217 source currency code (e.g. `EUR`, `USD`, `GBP`) |
 
 #### Success Response — `200 OK`
 
@@ -198,21 +198,21 @@ handler({
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `sourceAmount` | `number` | Original amount entered by the user |
-| `sourceCurrency` | `string` | Source currency code |
-| `targetCurrency` | `string` | Destination currency code |
-| `fxRate` | `number` | Exchange rate applied |
-| `fee` | `number` | Flat fee deducted (in source currency) |
-| `convertedAmount` | `number` | Final amount the recipient receives |
-| `estimatedDelivery` | `string` | Estimated transfer delivery time |
+| Field               | Type     | Description                            |
+| ------------------- | -------- | -------------------------------------- |
+| `sourceAmount`      | `number` | Original amount entered by the user    |
+| `sourceCurrency`    | `string` | Source currency code                   |
+| `targetCurrency`    | `string` | Destination currency code              |
+| `fxRate`            | `number` | Exchange rate applied                  |
+| `fee`               | `number` | Flat fee deducted (in source currency) |
+| `convertedAmount`   | `number` | Final amount the recipient receives    |
+| `estimatedDelivery` | `string` | Estimated transfer delivery time       |
 
 #### Error Responses
 
-| Status | When | Example Body |
-|--------|------|-------------|
-| **400** | Malformed request — missing fields, invalid JSON | `{ "error": "Missing required field: amount" }` |
+| Status  | When                                                        | Example Body                                      |
+| ------- | ----------------------------------------------------------- | ------------------------------------------------- |
+| **400** | Malformed request — missing fields, invalid JSON            | `{ "error": "Missing required field: amount" }`   |
 | **422** | Business validation — negative amount, unsupported currency | `{ "error": "Amount must be a positive number" }` |
 
 ### Business Logic
@@ -262,13 +262,13 @@ stateDiagram-v2
 
 ### Screen Layout
 
-| Element | Description |
-|---------|-------------|
-| **Amount input** | Numeric field for the send amount |
-| **"Get Quote" button** | Triggers the API call |
-| **Quote result card** | Displays: send amount, FX rate, fee, receive amount, estimated delivery |
-| **Error banner** | Shown on validation or network errors |
-| **Loading spinner** | Shown while the request is in-flight |
+| Element                | Description                                                             |
+| ---------------------- | ----------------------------------------------------------------------- |
+| **Amount input**       | Numeric field for the send amount                                       |
+| **"Get Quote" button** | Triggers the API call                                                   |
+| **Quote result card**  | Displays: send amount, FX rate, fee, receive amount, estimated delivery |
+| **Error banner**       | Shown on validation or network errors                                   |
+| **Loading spinner**    | Shown while the request is in-flight                                    |
 
 ### Example Display
 
@@ -289,11 +289,13 @@ stateDiagram-v2
 The full OpenAPI 3.0 specification lives at `openapi/quotes-api.yaml`.
 
 You can load it in:
+
 - [Swagger Editor](https://editor.swagger.io/)
 - [Redocly](https://redocly.com/)
 - Any OpenAPI-compatible tool
 
 The spec defines:
+
 - Request schema with validation constraints
 - Success response schema
 - `400` and `422` error response schemas
