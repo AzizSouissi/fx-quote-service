@@ -18,7 +18,11 @@ A structured, course-like walkthrough of every concept used in this project. Eac
 10. [State Management Without Redux](#10-state-management-without-redux)
 11. [Connecting Frontend to Backend — HTTP Clients](#11-connecting-frontend-to-backend--http-clients)
 12. [FX Domain Knowledge — Rates, Fees, Quotes](#12-fx-domain-knowledge--rates-fees-quotes)
-13. [Project Workflow — Putting It All Together](#13-project-workflow--putting-it-all-together)
+13. [Authentication — JWT & Mocked AWS Cognito](#13-authentication--jwt--mocked-aws-cognito)
+14. [Middleware — Protecting Routes](#14-middleware--protecting-routes)
+15. [Transfers — State Machines & Entity Relationships](#15-transfers--state-machines--entity-relationships)
+16. [React Navigation — Multi-Screen Apps](#16-react-navigation--multi-screen-apps)
+17. [Project Workflow — Putting It All Together](#17-project-workflow--putting-it-all-together)
 
 ---
 
@@ -48,7 +52,11 @@ graph TD
 | REST API design     | Proper HTTP methods, status codes, request/response contracts       |
 | OpenAPI specs       | Documenting APIs so any team can consume them                       |
 | Jest testing        | Writing reliable, automated tests for business logic                |
+| Auth & JWT          | User registration, login, and token-based authentication            |
+| Cognito mock        | Simulating AWS Cognito locally without an AWS account               |
+| Middleware          | Protecting routes with token verification (Lambda Authorizer style) |
 | React Native + Expo | Building cross-platform mobile UIs                                  |
+| React Navigation    | Multi-screen navigation with auth-gated flows                       |
 | State management    | Managing loading, error, and success states without heavy libraries |
 
 ### Prerequisites
@@ -927,7 +935,421 @@ In production, FX systems also handle:
 
 ---
 
-## 13. Project Workflow — Putting It All Together
+## 13. Authentication — JWT & Mocked AWS Cognito
+
+### What Is AWS Cognito?
+
+AWS Cognito is a managed **user directory and authentication service**. It handles:
+
+- User registration (sign-up)
+- User login (authentication)
+- Token issuance (JWT access/ID tokens)
+- Password hashing and storage
+- Token refresh and expiry
+
+### How Cognito Works (Simplified)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Mobile App
+    participant Cognito as AWS Cognito
+    participant GW as API Gateway
+    participant Lambda
+
+    User->>App: Enter email + password
+    App->>Cognito: InitiateAuth(email, password)
+    Cognito->>Cognito: Verify credentials
+    Cognito-->>App: AccessToken (JWT) + RefreshToken
+    App->>GW: GET /quotes (Authorization: Bearer <token>)
+    GW->>GW: Verify JWT against Cognito JWKS
+    GW->>Lambda: Invoke (user info in event)
+    Lambda-->>App: Protected data
+```
+
+### How We Mock It Locally
+
+We replicate the same flow without AWS:
+
+| Real Cognito             | Our Mock                    | File                           |
+| ------------------------ | --------------------------- | ------------------------------ |
+| User Pool (stores users) | In-memory Map               | `store/userStore.js`           |
+| SignUp API               | `register()` with bcrypt    | `services/authService.js`      |
+| InitiateAuth API         | `login()` returns JWT       | `services/authService.js`      |
+| JWT signed with RSA      | JWT signed with HMAC secret | `utils/tokenUtils.js`          |
+| API Gateway Authorizer   | `authenticate()` middleware | `middleware/authMiddleware.js` |
+
+### JWT (JSON Web Token)
+
+A JWT is a digitally signed JSON payload. It has three parts:
+
+```
+header.payload.signature
+```
+
+```mermaid
+graph LR
+    A[Header<br/>Algorithm + Type] --> D[Base64Url encode]
+    B[Payload<br/>Claims: sub, email, exp] --> D
+    D --> E[Signature<br/>HMAC-SHA256]
+    E --> F[eyJhbG...eyJzd...SflKx...]
+
+    style A fill:#4a90d9,color:#fff
+    style B fill:#7bc96f,color:#fff
+    style E fill:#e74c3c,color:#fff
+```
+
+#### Key Claims (Payload Fields)
+
+| Claim       | Meaning                            | Example              |
+| ----------- | ---------------------------------- | -------------------- |
+| `sub`       | Subject — unique user ID           | `"a1b2c3-d4e5"`      |
+| `email`     | User's email                       | `"user@example.com"` |
+| `token_use` | Token purpose (Cognito convention) | `"access"`           |
+| `iat`       | Issued at (Unix timestamp)         | `1709856000`         |
+| `exp`       | Expiry (Unix timestamp)            | `1709859600`         |
+
+### Password Hashing with bcrypt
+
+Never store plain-text passwords. bcrypt:
+
+1. Generates a random **salt**
+2. Hashes the password + salt through multiple rounds
+3. Produces a fixed-length hash that includes the salt
+
+```js
+const bcrypt = require("bcryptjs");
+
+// Registration — hash the password
+const hashed = await bcrypt.hash("mypassword", 10); // 10 salt rounds
+
+// Login — compare plain text to stored hash
+const isValid = await bcrypt.compare("mypassword", hashed); // true
+```
+
+The `10` is the **cost factor** — higher = slower = more secure against brute force.
+
+### Token Flow in Our Project
+
+```mermaid
+sequenceDiagram
+    participant App as Mobile App
+    participant Auth as authHandler
+    participant Svc as authService
+    participant Store as userStore
+    participant Token as tokenUtils
+
+    Note over App,Token: Registration
+    App->>Auth: POST /auth/register {email, password, name}
+    Auth->>Svc: register(email, password, name)
+    Svc->>Svc: bcrypt.hash(password)
+    Svc->>Store: create(user)
+    Store-->>Svc: User saved
+    Svc-->>Auth: User profile (no password)
+    Auth-->>App: 201 Created
+
+    Note over App,Token: Login
+    App->>Auth: POST /auth/login {email, password}
+    Auth->>Svc: login(email, password)
+    Svc->>Store: findByEmail(email)
+    Store-->>Svc: User record
+    Svc->>Svc: bcrypt.compare(password, hash)
+    Svc->>Token: signToken({id, email})
+    Token-->>Svc: JWT string
+    Svc-->>Auth: {accessToken, user}
+    Auth-->>App: 200 OK
+```
+
+---
+
+## 14. Middleware — Protecting Routes
+
+### What Is Middleware?
+
+Middleware is code that runs **between** receiving a request and executing the main handler logic. In our case, it verifies the JWT before allowing access to protected endpoints.
+
+```mermaid
+flowchart LR
+    A[HTTP Request] --> B{Auth Middleware}
+    B -->|Valid token| C[Handler Logic]
+    B -->|No token / Invalid| D[401 Unauthorized]
+
+    style B fill:#f5a623,stroke:#333,color:#000
+    style C fill:#7bc96f,stroke:#333,color:#fff
+    style D fill:#e74c3c,stroke:#333,color:#fff
+```
+
+### Lambda Authorizer (What Cognito Uses)
+
+In real AWS, API Gateway has a **Lambda Authorizer** that:
+
+1. Intercepts the request before it reaches your handler
+2. Extracts the `Authorization: Bearer <token>` header
+3. Verifies the JWT against Cognito's public keys (JWKS)
+4. Injects the decoded user info into the Lambda event
+5. Returns `Allow` or `Deny`
+
+### Our Local Implementation
+
+We do the same thing as a function:
+
+```js
+const { verifyToken } = require("../utils/tokenUtils");
+
+function authenticate(event) {
+  // 1. Extract the Authorization header
+  const authHeader = event.headers?.Authorization;
+
+  // 2. Validate format: "Bearer <token>"
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0] !== "Bearer") {
+    throw { status: 401, message: "Invalid format" };
+  }
+
+  // 3. Verify the JWT signature and expiry
+  const decoded = verifyToken(parts[1]);
+
+  // 4. Return user info (like Cognito would inject)
+  return { userId: decoded.sub, email: decoded.email };
+}
+```
+
+### Public vs Protected Endpoints
+
+```mermaid
+graph TD
+    subgraph Public["Public — No Auth Required"]
+        A[POST /auth/register]
+        B[POST /auth/login]
+        C[POST /quotes<br/>anonymous preview]
+    end
+
+    subgraph Protected["Protected — JWT Required"]
+        D[GET /auth/me]
+        E[POST /quotes/create]
+        F[GET /quotes/:id]
+        G[GET /quotes]
+        H[POST /transfers]
+        I[GET /transfers/:id]
+        J[GET /transfers]
+    end
+
+    style Public fill:#d4edda,stroke:#333
+    style Protected fill:#f8d7da,stroke:#333
+```
+
+Protected handlers start with:
+
+```js
+async function createQuoteHandler(event) {
+  const user = authenticate(event); // Throws 401 if invalid
+  // ... rest of handler uses user.userId
+}
+```
+
+### HTTP 401 vs 403
+
+| Code                 | Meaning                                     | When                                  |
+| -------------------- | ------------------------------------------- | ------------------------------------- |
+| **401** Unauthorized | "I don't know who you are"                  | Missing or invalid token              |
+| **403** Forbidden    | "I know who you are, but you can't do this" | Valid token, insufficient permissions |
+
+We use 401 for all auth failures since we don't have role-based permissions.
+
+---
+
+## 15. Transfers — State Machines & Entity Relationships
+
+### The Quote → Transfer Flow
+
+A quote is a **preview**. A transfer is a **commitment**. The user flow:
+
+```mermaid
+stateDiagram-v2
+    [*] --> QuoteCreated: POST /quotes/create
+    QuoteCreated --> TransferCreated: POST /transfers {quoteId}
+    QuoteCreated --> Expired: Time passes (not implemented in demo)
+
+    state QuoteCreated {
+        [*] --> open
+    }
+
+    state TransferCreated {
+        [*] --> pending
+        pending --> processing
+        processing --> completed
+        processing --> failed
+    }
+```
+
+### Entity Relationships
+
+```mermaid
+erDiagram
+    USER ||--o{ QUOTE : creates
+    USER ||--o{ TRANSFER : initiates
+    QUOTE ||--o| TRANSFER : confirms_into
+
+    USER {
+        string id PK
+        string email
+        string name
+        string password
+    }
+    QUOTE {
+        string id PK
+        string userId FK
+        number sourceAmount
+        string sourceCurrency
+        number convertedAmount
+        string status
+    }
+    TRANSFER {
+        string id PK
+        string quoteId FK
+        string userId FK
+        number sourceAmount
+        string status
+    }
+```
+
+### Preventing Duplicate Transfers (Idempotency)
+
+Once a quote is used, we mark it as `"confirmed"` and reject further attempts:
+
+```js
+if (quote.status === "confirmed") {
+  throw { status: 409, message: "Quote already used" };
+}
+
+quote.status = "confirmed"; // Mark as used
+```
+
+**409 Conflict** is the right status code — the request conflicts with the current state of the resource.
+
+### Ownership Checks
+
+Every query includes a user ID check so users can only see their own data:
+
+```js
+function getTransfer(transferId, userId) {
+  const transfer = transferStore.findById(transferId);
+
+  // Returns 404 (not 403) to avoid leaking existence of other users' data
+  if (!transfer || transfer.userId !== userId) {
+    throw { status: 404, message: "Transfer not found" };
+  }
+
+  return transfer;
+}
+```
+
+> **Security pattern:** Return 404 instead of 403 for resources owned by other users. This prevents an attacker from discovering valid IDs.
+
+---
+
+## 16. React Navigation — Multi-Screen Apps
+
+### Why Navigation?
+
+Our app now has multiple screens: Login, Register, and the Quote screen. React Navigation handles:
+
+- Stack-based screen transitions
+- Conditional rendering based on auth state
+- Header management
+- Deep linking (optional)
+
+### Installation
+
+```bash
+npx expo install @react-navigation/native @react-navigation/native-stack \
+  react-native-screens react-native-safe-area-context \
+  @react-native-async-storage/async-storage
+```
+
+### Auth-Gated Navigation
+
+```mermaid
+flowchart TD
+    A[App Starts] --> B{Token in AsyncStorage?}
+    B -->|Yes| C[AppStack<br/>QuoteScreen]
+    B -->|No| D[AuthStack<br/>Login / Register]
+
+    D -->|Login success| E[Save token to AsyncStorage]
+    E --> C
+
+    C -->|Sign out| F[Clear AsyncStorage]
+    F --> D
+
+    style C fill:#7bc96f,stroke:#333,color:#fff
+    style D fill:#4a90d9,stroke:#333,color:#fff
+```
+
+### The Navigation Structure
+
+```jsx
+// Two separate stacks based on auth state
+function AuthStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function AppStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Quote" component={QuoteScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Root switches between them
+function RootNavigator() {
+  const { token, loading } = useAuth();
+  if (loading) return <Spinner />;
+  return token ? <AppStack /> : <AuthStack />;
+}
+```
+
+### React Context for Auth State
+
+We use React's built-in Context API to share auth state across all screens:
+
+```mermaid
+graph TD
+    A[AuthProvider<br/>Wraps entire app] --> B[AuthContext<br/>token, user, signIn, signOut]
+    B --> C[LoginScreen<br/>calls signIn]
+    B --> D[RegisterScreen<br/>calls signIn]
+    B --> E[QuoteScreen<br/>reads token, calls signOut]
+    B --> F[api.js<br/>attaches token to requests]
+
+    style A fill:#bb86fc,stroke:#333,color:#fff
+    style B fill:#f5a623,stroke:#333,color:#000
+```
+
+### AsyncStorage — Persisting the Session
+
+AsyncStorage is React Native's equivalent of `localStorage`. We use it so the user stays logged in across app restarts:
+
+```js
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Save on login
+await AsyncStorage.setItem("token", accessToken);
+
+// Restore on app start
+const token = await AsyncStorage.getItem("token");
+
+// Clear on logout
+await AsyncStorage.removeItem("token");
+```
+
+---
+
+## 17. Project Workflow — Putting It All Together
 
 ### Development Order
 
@@ -935,46 +1357,62 @@ Build the project in this sequence:
 
 ```mermaid
 graph TD
-    A[1. Define API Contract<br/>openapi/quotes-api.yaml] --> B[2. Build Data Layer<br/>utils/fxRates.js]
-    B --> C[3. Build Service Layer<br/>services/quoteService.js]
-    C --> D[4. Write Tests<br/>tests/quoteService.test.js]
-    D --> E[5. Build Handler Layer<br/>handlers/quoteHandler.js]
-    E --> F[6. Test Handler Locally<br/>node invoke script]
-    F --> G[7. Build Mobile API Client<br/>mobile/services/api.js]
-    G --> H[8. Build Mobile UI<br/>screens + components]
+    A[1. Define API Contract<br/>openapi/quotes-api.yaml] --> B[2. Build Data Layer<br/>stores + fxRates.js]
+    B --> C[3. Build Auth System<br/>authService + tokenUtils]
+    C --> D[4. Build Quote Service<br/>quoteService.js]
+    D --> E[5. Build Transfer Service<br/>transferService.js]
+    E --> F[6. Build Middleware<br/>authMiddleware.js]
+    F --> G[7. Build Handlers<br/>auth / quote / transfer]
+    G --> H[8. Write Tests<br/>all service tests]
+    H --> I[9. Build Mobile Auth<br/>context + login + register]
+    I --> J[10. Build Mobile Quote + Transfer<br/>screens + api.js]
 
     style A fill:#f5a623,stroke:#333,color:#000
     style B fill:#f5a623,stroke:#333,color:#000
-    style C fill:#7bc96f,stroke:#333,color:#fff
-    style D fill:#e74c3c,stroke:#333,color:#fff
-    style E fill:#4a90d9,stroke:#333,color:#fff
-    style F fill:#4a90d9,stroke:#333,color:#fff
-    style G fill:#61dafb,stroke:#333,color:#000
-    style H fill:#61dafb,stroke:#333,color:#000
+    style C fill:#e74c3c,stroke:#333,color:#fff
+    style D fill:#7bc96f,stroke:#333,color:#fff
+    style E fill:#7bc96f,stroke:#333,color:#fff
+    style F fill:#e74c3c,stroke:#333,color:#fff
+    style G fill:#4a90d9,stroke:#333,color:#fff
+    style H fill:#8e44ad,stroke:#333,color:#fff
+    style I fill:#61dafb,stroke:#333,color:#000
+    style J fill:#61dafb,stroke:#333,color:#000
 ```
 
-### Why This Order?
+### Full API Surface
 
-1. **Contract first** — Everyone agrees on the API shape before writing code
-2. **Inside-out backend** — Build the deepest layer first (data → service → handler)
-3. **Test early** — Write tests for the service before wiring up the handler
-4. **Frontend last** — The API is stable by the time you build the mobile app
+| Endpoint         | Method | Auth | Purpose                     |
+| ---------------- | ------ | ---- | --------------------------- |
+| `/auth/register` | POST   | No   | Create user account         |
+| `/auth/login`    | POST   | No   | Authenticate → get JWT      |
+| `/auth/me`       | GET    | Yes  | Get current user profile    |
+| `/quotes`        | POST   | No   | Anonymous quote preview     |
+| `/quotes/create` | POST   | Yes  | Create & persist a quote    |
+| `/quotes/:id`    | GET    | Yes  | Retrieve a saved quote      |
+| `/quotes`        | GET    | Yes  | List user's quote history   |
+| `/transfers`     | POST   | Yes  | Confirm quote into transfer |
+| `/transfers/:id` | GET    | Yes  | Get transfer status         |
+| `/transfers`     | GET    | Yes  | List user's transfers       |
 
 ### Summary Cheat Sheet
 
-| Concept              | Tool / Pattern                       | File(s)                |
-| -------------------- | ------------------------------------ | ---------------------- |
-| Serverless function  | AWS Lambda handler pattern           | `quoteHandler.js`      |
-| Business logic layer | Pure functions, no HTTP coupling     | `quoteService.js`      |
-| Data layer           | Static lookup (mock for FX provider) | `fxRates.js`           |
-| API documentation    | OpenAPI 3.0 YAML                     | `quotes-api.yaml`      |
-| Unit testing         | Jest, AAA pattern                    | `quoteService.test.js` |
-| Mobile UI            | React Native + Expo                  | `QuoteScreen.js`       |
-| Reusable components  | React functional components          | `QuoteResult.js`       |
-| HTTP client          | `fetch` API, separated service       | `api.js`               |
-| State management     | `useState` hook                      | `QuoteScreen.js`       |
-| Input validation     | Structural (400) + Business (422)    | `quoteHandler.js`      |
+| Concept              | Tool / Pattern                         | File(s)                                                   |
+| -------------------- | -------------------------------------- | --------------------------------------------------------- |
+| Serverless function  | AWS Lambda handler pattern             | `quoteHandler.js`, `authHandler.js`, `transferHandler.js` |
+| Business logic layer | Pure functions, no HTTP coupling       | `quoteService.js`, `authService.js`, `transferService.js` |
+| Data layer           | In-memory stores (mock DynamoDB)       | `userStore.js`, `quoteStore.js`, `transferStore.js`       |
+| FX rates             | Static lookup (mock provider)          | `fxRates.js`                                              |
+| Authentication       | JWT + bcrypt (mock Cognito)            | `authService.js`, `tokenUtils.js`                         |
+| Middleware           | Token verification (Lambda Authorizer) | `authMiddleware.js`                                       |
+| API documentation    | OpenAPI 3.0 YAML                       | `quotes-api.yaml`                                         |
+| Unit testing         | Jest, AAA pattern                      | `*.test.js` (32 tests)                                    |
+| Mobile UI            | React Native + Expo                    | `QuoteScreen.js`, `LoginScreen.js`, `RegisterScreen.js`   |
+| Navigation           | React Navigation (native stack)        | `App.js`                                                  |
+| Auth state           | React Context + AsyncStorage           | `AuthContext.js`                                          |
+| HTTP client          | `fetch` API, separated service         | `api.js`                                                  |
+| Input validation     | Structural (400) + Business (422)      | All handlers                                              |
+| Idempotency          | Quote status check (409 Conflict)      | `transferService.js`                                      |
 
 ---
 
-> **Next:** Start building! Follow the order in [Section 13](#13-project-workflow--putting-it-all-together) and refer back to each topic section as you work through each layer.
+> **Next:** Start building! Follow the order in [Section 17](#17-project-workflow--putting-it-all-together) and refer back to each topic section as you work through each layer.
