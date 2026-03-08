@@ -33,7 +33,7 @@ A walkthrough of every Terraform file in the `terraform/` directory. Explains wh
 ```mermaid
 graph LR
     A["📱 Mobile App"] -->|HTTP| B["Express Server<br/>(server.js, port 3000)"]
-    B -->|wrap()| C["Lambda Handlers"]
+    B -->|"wrap()"| C["Lambda Handlers"]
     C --> D["In-Memory Maps<br/>(userStore, quoteStore, transferStore)"]
     C --> E["JWT via jsonwebtoken<br/>(tokenUtils.js)"]
 
@@ -299,14 +299,14 @@ RDS must run inside a VPC (Virtual Private Cloud). Lambda functions connect to R
 
 ```mermaid
 graph TD
-    subgraph "VPC (10.0.0.0/16)"
-        subgraph "Private Subnet A (AZ-1)"
+    subgraph VPCNET["VPC (10.0.0.0/16)"]
+        subgraph SUBA["Private Subnet A (AZ-1)"]
             RDS["RDS PostgreSQL<br/>port 5432"]
         end
-        subgraph "Private Subnet B (AZ-2)"
-            RDS_STANDBY["(Multi-AZ standby<br/>in prod only)"]
+        subgraph SUBB["Private Subnet B (AZ-2)"]
+            RDS_STANDBY["Multi-AZ standby<br/>prod only"]
         end
-        LAMBDA["Lambda Functions<br/>(in VPC)"]
+        LAMBDA["Lambda Functions<br/>in VPC"]
     end
 
     LAMBDA -->|port 5432| RDS
