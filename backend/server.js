@@ -1,6 +1,3 @@
-// Local Express server that bridges HTTP requests to Lambda-style handlers.
-// Usage: npm start  (runs on port 3000)
-
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -34,7 +31,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Swagger UI — OpenAPI docs
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 
 // Convert Express req → Lambda event, call handler, send response
@@ -60,14 +56,14 @@ app.post("/auth/login", wrap(loginHandler));
 app.get("/auth/me", wrap(meHandler));
 
 // --- Quotes ---
-app.post("/quotes", wrap(quotePreviewHandler)); // public preview
-app.post("/quotes/create", wrap(createQuoteHandler)); // authenticated
-app.get("/quotes/list", wrap(listQuotesHandler)); // authenticated (before :id)
+app.post("/quotes", wrap(quotePreviewHandler));
+app.post("/quotes/create", wrap(createQuoteHandler));
+app.get("/quotes/list", wrap(listQuotesHandler));
 app.get("/quotes/:id", wrap(getQuoteHandler, { pathParam: "id" }));
 
 // --- Transfers ---
 app.post("/transfers", wrap(createTransferHandler));
-app.get("/transfers/list", wrap(listTransfersHandler)); // before :id
+app.get("/transfers/list", wrap(listTransfersHandler));
 app.get("/transfers/:id", wrap(getTransferHandler, { pathParam: "id" }));
 
 app.listen(PORT, () => {

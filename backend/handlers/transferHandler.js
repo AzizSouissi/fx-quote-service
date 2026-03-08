@@ -1,8 +1,3 @@
-// Transfer handler — authenticated endpoints for creating and tracking transfers.
-// POST /transfers       — Confirm a quote into a transfer
-// GET  /transfers/:id   — Get transfer by ID
-// GET  /transfers       — List user's transfers
-
 const {
   createTransfer,
   getTransfer,

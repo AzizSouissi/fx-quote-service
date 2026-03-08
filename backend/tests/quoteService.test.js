@@ -1,7 +1,6 @@
 const { calculateQuote } = require("../services/quoteService");
 
 describe("calculateQuote", () => {
-  // --- Happy path ---
 
   test("returns correct quote for 100 EUR", () => {
     const quote = calculateQuote(100, "EUR");
@@ -33,8 +32,6 @@ describe("calculateQuote", () => {
     expect(quote.convertedAmount).toBe((50 - 2.0) * 3.9);
   });
 
-  // --- Validation errors ---
-
   test("throws 422 for negative amount", () => {
     expect(() => calculateQuote(-10, "EUR")).toThrow(
       "Amount must be a positive number",
@@ -60,7 +57,6 @@ describe("calculateQuote", () => {
   });
 
   test("throws 422 when amount is less than or equal to fee", () => {
-    // EUR fee is 2.5
     expect(() => calculateQuote(2.5, "EUR")).toThrow(
       "Amount must be greater than the fee",
     );
@@ -68,8 +64,6 @@ describe("calculateQuote", () => {
       "Amount must be greater than the fee",
     );
   });
-
-  // --- Edge cases ---
 
   test("handles large amounts correctly", () => {
     const quote = calculateQuote(1000000, "EUR");

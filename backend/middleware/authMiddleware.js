@@ -1,7 +1,3 @@
-// Auth middleware — mimics an API Gateway Lambda Authorizer backed by Cognito.
-// Extracts and verifies the JWT from the Authorization header,
-// then attaches the decoded user info to the event.
-
 const { verifyToken } = require("../utils/tokenUtils");
 
 function authenticate(event) {

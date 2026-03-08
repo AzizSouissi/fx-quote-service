@@ -1,8 +1,3 @@
-// Auth handler — mimics Cognito-backed Lambda endpoints.
-// POST /auth/register — SignUp
-// POST /auth/login    — InitiateAuth
-// GET  /auth/me       — GetUser (protected)
-
 const { register, login, getProfile } = require("../services/authService");
 const { authenticate } = require("../middleware/authMiddleware");
 

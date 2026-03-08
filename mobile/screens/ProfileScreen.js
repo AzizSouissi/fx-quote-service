@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { ScrollView } from "react-native";
 import {
   Text,
@@ -6,6 +6,7 @@ import {
   Button,
   ActivityIndicator,
   Banner,
+  useTheme,
 } from "react-native-paper";
 import { useFocusEffect } from "@react-navigation/native";
 import { getProfile } from "../services/api";
@@ -13,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ProfileScreen() {
   const { token, user, signOut } = useAuth();
+  const { colors } = useTheme();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +69,7 @@ export default function ProfileScreen() {
         <Banner
           visible
           icon="alert-circle"
-          style={{ marginBottom: 16, backgroundColor: "#f8d7da" }}
+          style={{ marginBottom: 16, backgroundColor: colors.errorContainer }}
         >
           {error}
         </Banner>
@@ -89,7 +91,7 @@ export default function ProfileScreen() {
 
       <Button
         mode="contained"
-        buttonColor="#dc3545"
+        buttonColor={colors.error}
         onPress={signOut}
         style={{ borderRadius: 8, paddingVertical: 4 }}
       >
@@ -100,6 +102,7 @@ export default function ProfileScreen() {
 }
 
 function Row({ label, value }) {
+  const { colors } = useTheme();
   return (
     <Card.Content
       style={{
@@ -109,7 +112,7 @@ function Row({ label, value }) {
         paddingHorizontal: 0,
       }}
     >
-      <Text variant="bodyMedium" style={{ color: "#6c757d" }}>
+      <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
         {label}
       </Text>
       <Text variant="bodyMedium" style={{ fontWeight: "600" }}>

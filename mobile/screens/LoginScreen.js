@@ -1,11 +1,12 @@
-import React, { useState } from "react";
-import { View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Text, TextInput, Button, Banner } from "react-native-paper";
+import { useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Text, TextInput, Button, Banner, useTheme } from "react-native-paper";
 import { loginUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginScreen({ navigation }) {
   const { signIn } = useAuth();
+  const { colors } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -47,7 +48,7 @@ export default function LoginScreen({ navigation }) {
         </Text>
         <Text
           variant="bodyMedium"
-          style={{ color: "#6c757d", marginBottom: 32 }}
+          style={{ color: colors.onSurfaceVariant, marginBottom: 32 }}
         >
           Sign in to your account
         </Text>
@@ -85,7 +86,7 @@ export default function LoginScreen({ navigation }) {
           <Banner
             visible
             icon="alert-circle"
-            style={{ marginTop: 16, backgroundColor: "#f8d7da" }}
+            style={{ marginTop: 16, backgroundColor: colors.errorContainer }}
           >
             {error}
           </Banner>

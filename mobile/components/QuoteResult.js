@@ -1,8 +1,8 @@
-import React from "react";
 import { View } from "react-native";
-import { Card, Text, Divider } from "react-native-paper";
+import { Card, Text, Divider, useTheme } from "react-native-paper";
 
 export default function QuoteResult({ quote }) {
+  const { colors } = useTheme();
   return (
     <Card style={{ marginTop: 20 }} mode="outlined">
       <Card.Content>
@@ -19,7 +19,7 @@ export default function QuoteResult({ quote }) {
         <Row
           label="You receive"
           value={`${quote.convertedAmount.toFixed(2)} ${quote.targetCurrency}`}
-          highlight
+          highlightColor={colors.success}
         />
         <Row label="Est. delivery" value={quote.estimatedDelivery} />
       </Card.Content>
@@ -27,7 +27,8 @@ export default function QuoteResult({ quote }) {
   );
 }
 
-function Row({ label, value, highlight }) {
+function Row({ label, value, highlightColor }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{
@@ -36,12 +37,12 @@ function Row({ label, value, highlight }) {
         paddingVertical: 6,
       }}
     >
-      <Text variant="bodyMedium" style={{ color: "#6c757d" }}>
+      <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
         {label}
       </Text>
       <Text
         variant="bodyMedium"
-        style={{ fontWeight: "600", color: highlight ? "#198754" : "#212529" }}
+        style={{ fontWeight: "600", color: highlightColor || colors.onSurface }}
       >
         {value}
       </Text>

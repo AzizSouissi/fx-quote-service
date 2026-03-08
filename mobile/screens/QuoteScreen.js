@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import {
   Text,
@@ -7,6 +7,7 @@ import {
   Banner,
   Card,
   Chip,
+  useTheme,
 } from "react-native-paper";
 import { createQuote, createTransfer } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +15,7 @@ import QuoteResult from "../components/QuoteResult";
 
 export default function QuoteScreen() {
   const { token, user } = useAuth();
+  const { colors } = useTheme();
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [quote, setQuote] = useState(null);
@@ -62,7 +64,7 @@ export default function QuoteScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -77,7 +79,7 @@ export default function QuoteScreen() {
         </Text>
         <Text
           variant="bodyMedium"
-          style={{ color: "#6c757d", marginBottom: 24 }}
+          style={{ color: colors.onSurfaceVariant, marginBottom: 24 }}
         >
           Hi, {user?.name}
         </Text>
@@ -118,7 +120,7 @@ export default function QuoteScreen() {
           <Banner
             visible
             icon="alert-circle"
-            style={{ marginTop: 16, backgroundColor: "#f8d7da" }}
+            style={{ marginTop: 16, backgroundColor: colors.errorContainer }}
           >
             {error}
           </Banner>
@@ -132,7 +134,7 @@ export default function QuoteScreen() {
               onPress={handleConfirmTransfer}
               loading={confirming}
               disabled={confirming}
-              buttonColor="#198754"
+              buttonColor={colors.success}
               style={{ borderRadius: 8, paddingVertical: 4, marginTop: 16 }}
             >
               Confirm Transfer
@@ -142,23 +144,36 @@ export default function QuoteScreen() {
 
         {transfer && (
           <Card
-            style={{ marginTop: 20, backgroundColor: "#d1e7dd" }}
+            style={{ marginTop: 20, backgroundColor: colors.successContainer }}
             mode="outlined"
           >
             <Card.Content>
               <Text
                 variant="titleMedium"
-                style={{ color: "#0f5132", fontWeight: "700", marginBottom: 8 }}
+                style={{
+                  color: colors.onSuccessContainer,
+                  fontWeight: "700",
+                  marginBottom: 8,
+                }}
               >
                 Transfer Created!
               </Text>
-              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+              <Text
+                variant="bodyMedium"
+                style={{ color: colors.onSuccessContainer }}
+              >
                 ID: {transfer.id.slice(0, 8)}...
               </Text>
-              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+              <Text
+                variant="bodyMedium"
+                style={{ color: colors.onSuccessContainer }}
+              >
                 Status: {transfer.status.toUpperCase()}
               </Text>
-              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+              <Text
+                variant="bodyMedium"
+                style={{ color: colors.onSuccessContainer }}
+              >
                 {transfer.sourceAmount} {transfer.sourceCurrency} →{" "}
                 {transfer.convertedAmount.toFixed(2)} {transfer.targetCurrency}
               </Text>

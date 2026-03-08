@@ -1,6 +1,3 @@
-// Supported FX rates and fee schedule.
-// In production this would call an external rates provider.
-
 const RATES = {
   EUR_TND: { rate: 3.35, fee: 2.5, estimatedDelivery: "5 minutes" },
   USD_TND: { rate: 3.1, fee: 3.0, estimatedDelivery: "5 minutes" },

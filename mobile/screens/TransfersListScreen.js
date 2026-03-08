@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -12,20 +12,21 @@ import {
   ActivityIndicator,
   Banner,
   Divider,
+  useTheme,
 } from "react-native-paper";
 import { useFocusEffect } from "@react-navigation/native";
 import { listTransfers } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
-const STATUS_COLORS = {
-  pending: "#fff3cd",
-  processing: "#cff4fc",
-  completed: "#d1e7dd",
-  failed: "#f8d7da",
-};
-
 export default function TransfersListScreen() {
   const { token } = useAuth();
+  const { colors } = useTheme();
+  const statusColors = {
+    pending: colors.warningContainer,
+    processing: colors.infoContainer,
+    completed: colors.successContainer,
+    failed: colors.errorContainer,
+  };
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,7 +83,10 @@ export default function TransfersListScreen() {
       >
         My Transfers
       </Text>
-      <Text variant="bodyMedium" style={{ color: "#6c757d", marginBottom: 20 }}>
+      <Text
+        variant="bodyMedium"
+        style={{ color: colors.onSurfaceVariant, marginBottom: 20 }}
+      >
         {transfers.length} transfer{transfers.length !== 1 ? "s" : ""}
       </Text>
 
@@ -90,7 +94,7 @@ export default function TransfersListScreen() {
         <Banner
           visible
           icon="alert-circle"
-          style={{ marginBottom: 16, backgroundColor: "#f8d7da" }}
+          style={{ marginBottom: 16, backgroundColor: colors.errorContainer }}
         >
           {error}
         </Banner>
@@ -101,7 +105,7 @@ export default function TransfersListScreen() {
           <Card.Content>
             <Text
               variant="bodyLarge"
-              style={{ textAlign: "center", color: "#6c757d" }}
+              style={{ textAlign: "center", color: colors.onSurfaceVariant }}
             >
               No transfers yet. Create a quote and confirm it!
             </Text>
@@ -135,7 +139,8 @@ export default function TransfersListScreen() {
                     mode="outlined"
                     textStyle={{ fontSize: 11 }}
                     style={{
-                      backgroundColor: STATUS_COLORS[t.status] || "#e2e3e5",
+                      backgroundColor:
+                        statusColors[t.status] || colors.neutralContainer,
                     }}
                   >
                     {t.status?.toUpperCase()}
@@ -143,7 +148,7 @@ export default function TransfersListScreen() {
                 </View>
                 <Text
                   variant="bodySmall"
-                  style={{ color: "#6c757d", marginTop: 4 }}
+                  style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
                 >
                   Rate: {t.fxRate} — Est: {t.estimatedDelivery}
                 </Text>
@@ -151,7 +156,7 @@ export default function TransfersListScreen() {
                   <View
                     style={{
                       marginTop: 12,
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: colors.surfaceVariant,
                       borderRadius: 8,
                       padding: 12,
                     }}
@@ -183,6 +188,7 @@ export default function TransfersListScreen() {
 }
 
 function Row({ label, value }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{
@@ -191,7 +197,7 @@ function Row({ label, value }) {
         paddingVertical: 4,
       }}
     >
-      <Text variant="bodyMedium" style={{ color: "#6c757d" }}>
+      <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
         {label}
       </Text>
       <Text

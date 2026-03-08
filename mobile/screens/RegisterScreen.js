@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Text, TextInput, Button, Banner } from "react-native-paper";
+import { Text, TextInput, Button, Banner, useTheme } from "react-native-paper";
 import { registerUser, loginUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export default function RegisterScreen({ navigation }) {
   const { signIn } = useAuth();
+  const { colors } = useTheme();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +35,7 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -49,7 +50,7 @@ export default function RegisterScreen({ navigation }) {
         </Text>
         <Text
           variant="bodyMedium"
-          style={{ color: "#6c757d", marginBottom: 32 }}
+          style={{ color: colors.onSurfaceVariant, marginBottom: 32 }}
         >
           Sign up to start sending money
         </Text>
@@ -87,7 +88,7 @@ export default function RegisterScreen({ navigation }) {
           onPress={handleRegister}
           loading={loading}
           disabled={loading}
-          buttonColor="#198754"
+          buttonColor={colors.success}
           style={{ borderRadius: 8, paddingVertical: 4 }}
         >
           Sign Up
@@ -97,7 +98,7 @@ export default function RegisterScreen({ navigation }) {
           <Banner
             visible
             icon="alert-circle"
-            style={{ marginTop: 16, backgroundColor: "#f8d7da" }}
+            style={{ marginTop: 16, backgroundColor: colors.errorContainer }}
           >
             {error}
           </Banner>

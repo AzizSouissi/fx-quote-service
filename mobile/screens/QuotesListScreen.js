@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Banner,
   Divider,
+  useTheme,
 } from "react-native-paper";
 import { useFocusEffect } from "@react-navigation/native";
 import { listQuotes } from "../services/api";
@@ -19,6 +20,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function QuotesListScreen() {
   const { token } = useAuth();
+  const { colors } = useTheme();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,7 +77,10 @@ export default function QuotesListScreen() {
       >
         My Quotes
       </Text>
-      <Text variant="bodyMedium" style={{ color: "#6c757d", marginBottom: 20 }}>
+      <Text
+        variant="bodyMedium"
+        style={{ color: colors.onSurfaceVariant, marginBottom: 20 }}
+      >
         {quotes.length} quote{quotes.length !== 1 ? "s" : ""}
       </Text>
 
@@ -83,7 +88,7 @@ export default function QuotesListScreen() {
         <Banner
           visible
           icon="alert-circle"
-          style={{ marginBottom: 16, backgroundColor: "#f8d7da" }}
+          style={{ marginBottom: 16, backgroundColor: colors.errorContainer }}
         >
           {error}
         </Banner>
@@ -94,7 +99,7 @@ export default function QuotesListScreen() {
           <Card.Content>
             <Text
               variant="bodyLarge"
-              style={{ textAlign: "center", color: "#6c757d" }}
+              style={{ textAlign: "center", color: colors.onSurfaceVariant }}
             >
               No quotes yet. Create one from the Send tab!
             </Text>
@@ -129,7 +134,9 @@ export default function QuotesListScreen() {
                     textStyle={{ fontSize: 11 }}
                     style={{
                       backgroundColor:
-                        q.status === "open" ? "#d1e7dd" : "#e2e3e5",
+                        q.status === "open"
+                          ? colors.successContainer
+                          : colors.neutralContainer,
                     }}
                   >
                     {q.status?.toUpperCase()}
@@ -137,7 +144,7 @@ export default function QuotesListScreen() {
                 </View>
                 <Text
                   variant="bodySmall"
-                  style={{ color: "#6c757d", marginTop: 4 }}
+                  style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
                 >
                   Rate: {q.fxRate} — Fee: {q.fee} {q.sourceCurrency}
                 </Text>
@@ -145,7 +152,7 @@ export default function QuotesListScreen() {
                   <View
                     style={{
                       marginTop: 12,
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: colors.surfaceVariant,
                       borderRadius: 8,
                       padding: 12,
                     }}
@@ -176,6 +183,7 @@ export default function QuotesListScreen() {
 }
 
 function Row({ label, value }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{
@@ -184,7 +192,7 @@ function Row({ label, value }) {
         paddingVertical: 4,
       }}
     >
-      <Text variant="bodyMedium" style={{ color: "#6c757d" }}>
+      <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
         {label}
       </Text>
       <Text

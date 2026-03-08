@@ -2,7 +2,6 @@ const { register, login, getProfile } = require("../services/authService");
 const userStore = require("../store/userStore");
 const { verifyToken } = require("../utils/tokenUtils");
 
-// Clear the user store before each test to avoid cross-test pollution
 beforeEach(() => {
   userStore.clear();
 });
@@ -19,7 +18,6 @@ describe("register", () => {
     expect(result.email).toBe("test@example.com");
     expect(result.name).toBe("Test User");
     expect(result.createdAt).toBeDefined();
-    // Should not return password
     expect(result.password).toBeUndefined();
   });
 
@@ -67,7 +65,6 @@ describe("login", () => {
     expect(result.expiresIn).toBe(3600);
     expect(result.user.email).toBe("user@example.com");
 
-    // Verify the token is valid
     const decoded = verifyToken(result.accessToken);
     expect(decoded.sub).toBe(result.user.id);
     expect(decoded.email).toBe("user@example.com");
