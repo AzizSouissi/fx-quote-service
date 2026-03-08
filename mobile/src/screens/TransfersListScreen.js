@@ -15,13 +15,19 @@ import {
   useTheme,
 } from "react-native-paper";
 import { useFocusEffect } from "@react-navigation/native";
-import { listQuotes } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { listTransfers } from "../services/api";
+import { useAuth } from "../providers/AuthProvider";
 
-export default function QuotesListScreen() {
+export default function TransfersListScreen() {
   const { token } = useAuth();
   const { colors } = useTheme();
-  const [quotes, setQuotes] = useState([]);
+  const statusColors = {
+    pending: colors.warningContainer,
+    processing: colors.infoContainer,
+    completed: colors.successContainer,
+    failed: colors.errorContainer,
+  };
+  const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -30,8 +36,8 @@ export default function QuotesListScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const data = await listQuotes(token);
-      setQuotes(data.quotes || []);
+      const data = await listTransfers(token);
+      setTransfers(data.transfers || []);
     } catch (err) {
       setError(err.message);
     }
@@ -75,13 +81,13 @@ export default function QuotesListScreen() {
         variant="headlineMedium"
         style={{ fontWeight: "700", marginBottom: 4 }}
       >
-        My Quotes
+        My Transfers
       </Text>
       <Text
         variant="bodyMedium"
         style={{ color: colors.onSurfaceVariant, marginBottom: 20 }}
       >
-        {quotes.length} quote{quotes.length !== 1 ? "s" : ""}
+        {transfers.length} transfer{transfers.length !== 1 ? "s" : ""}
       </Text>
 
       {error && (
@@ -94,26 +100,26 @@ export default function QuotesListScreen() {
         </Banner>
       )}
 
-      {quotes.length === 0 && !error && (
+      {transfers.length === 0 && !error && (
         <Card mode="outlined" style={{ padding: 20 }}>
           <Card.Content>
             <Text
               variant="bodyLarge"
               style={{ textAlign: "center", color: colors.onSurfaceVariant }}
             >
-              No quotes yet. Create one from the Send tab!
+              No transfers yet. Create a quote and confirm it!
             </Text>
           </Card.Content>
         </Card>
       )}
 
-      {quotes.map((q) => {
-        const expanded = expandedId === q.id;
+      {transfers.map((t) => {
+        const expanded = expandedId === t.id;
         return (
           <TouchableOpacity
-            key={q.id}
+            key={t.id}
             activeOpacity={0.7}
-            onPress={() => setExpandedId(expanded ? null : q.id)}
+            onPress={() => setExpandedId(expanded ? null : t.id)}
           >
             <Card mode="outlined" style={{ marginBottom: 12 }}>
               <Card.Content>
@@ -125,8 +131,8 @@ export default function QuotesListScreen() {
                   }}
                 >
                   <Text variant="titleMedium" style={{ fontWeight: "600" }}>
-                    {q.sourceAmount} {q.sourceCurrency} →{" "}
-                    {q.convertedAmount?.toFixed(2)} {q.targetCurrency}
+                    {t.sourceAmount} {t.sourceCurrency} →{" "}
+                    {t.convertedAmount?.toFixed(2)} {t.targetCurrency}
                   </Text>
                   <Chip
                     compact
@@ -134,19 +140,17 @@ export default function QuotesListScreen() {
                     textStyle={{ fontSize: 11 }}
                     style={{
                       backgroundColor:
-                        q.status === "open"
-                          ? colors.successContainer
-                          : colors.neutralContainer,
+                        statusColors[t.status] || colors.neutralContainer,
                     }}
                   >
-                    {q.status?.toUpperCase()}
+                    {t.status?.toUpperCase()}
                   </Chip>
                 </View>
                 <Text
                   variant="bodySmall"
                   style={{ color: colors.onSurfaceVariant, marginTop: 4 }}
                 >
-                  Rate: {q.fxRate} — Fee: {q.fee} {q.sourceCurrency}
+                  Rate: {t.fxRate} — Est: {t.estimatedDelivery}
                 </Text>
                 {expanded && (
                   <View
@@ -158,18 +162,19 @@ export default function QuotesListScreen() {
                     }}
                   >
                     <Divider style={{ marginBottom: 8 }} />
-                    <Row label="Quote ID" value={q.id} />
-                    <Row label="Rate" value={q.fxRate?.toString()} />
-                    <Row label="Fee" value={`${q.fee} ${q.sourceCurrency}`} />
+                    <Row label="Transfer ID" value={t.id} />
+                    <Row label="Quote ID" value={t.quoteId} />
+                    <Row label="Rate" value={t.fxRate?.toString()} />
+                    <Row label="Fee" value={`${t.fee} ${t.sourceCurrency}`} />
                     <Row
                       label="Receive"
-                      value={`${q.convertedAmount?.toFixed(2)} ${q.targetCurrency}`}
+                      value={`${t.convertedAmount?.toFixed(2)} ${t.targetCurrency}`}
                     />
-                    <Row label="Status" value={q.status?.toUpperCase()} />
-                    <Row label="Delivery" value={q.estimatedDelivery} />
+                    <Row label="Status" value={t.status?.toUpperCase()} />
+                    <Row label="Delivery" value={t.estimatedDelivery} />
                     <Row
                       label="Created"
-                      value={new Date(q.createdAt).toLocaleString()}
+                      value={new Date(t.createdAt).toLocaleString()}
                     />
                   </View>
                 )}

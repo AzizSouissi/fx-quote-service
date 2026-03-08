@@ -2,7 +2,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { Text, TextInput, Button, Banner, useTheme } from "react-native-paper";
 import { registerUser, loginUser } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../providers/AuthProvider";
 
 export default function RegisterScreen({ navigation }) {
   const { signIn } = useAuth();

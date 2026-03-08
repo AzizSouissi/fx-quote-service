@@ -10,7 +10,7 @@ import {
   useTheme,
 } from "react-native-paper";
 import { createQuote, createTransfer } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../providers/AuthProvider";
 import QuoteResult from "../components/QuoteResult";
 
 export default function QuoteScreen() {
