@@ -24,13 +24,9 @@ export default function RootNavigator() {
     );
   }
 
-  if (!token) {
-    return (
-      <NavigationContainer>
-        <AuthStack />
-      </NavigationContainer>
-    );
-  }
-
-  return <AppTabs />;
+  return (
+    <NavigationContainer>
+      {token ? <AppTabs /> : <AuthStack />}
+    </NavigationContainer>
+  );
 }

@@ -17,7 +17,6 @@ const theme = {
     error: "#dc3545",
     errorContainer: "#f8d7da",
     onErrorContainer: "#842029",
-    // Custom app colors (not part of MD3 spec, accessed via theme.colors.*)
     success: "#198754",
     onSuccess: "#ffffff",
     successContainer: "#d1e7dd",
