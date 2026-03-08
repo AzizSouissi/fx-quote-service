@@ -1,15 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Text, TextInput, Button, Banner } from "react-native-paper";
 import { registerUser, loginUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -32,7 +23,6 @@ export default function RegisterScreen({ navigation }) {
 
     try {
       await registerUser(email.trim(), password, name.trim());
-      // Auto-login after registration
       const result = await loginUser(email.trim(), password);
       await signIn(result.accessToken, result.user);
     } catch (err) {
@@ -44,158 +34,83 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1, backgroundColor: "#fff" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ padding: 24, paddingTop: 80 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Sign up to start sending money</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="John Doe"
-            autoCapitalize="words"
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Min. 8 characters"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-          activeOpacity={0.8}
+        <Text
+          variant="headlineMedium"
+          style={{ fontWeight: "700", marginBottom: 4 }}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign Up</Text>
-          )}
-        </TouchableOpacity>
+          Create Account
+        </Text>
+        <Text
+          variant="bodyMedium"
+          style={{ color: "#6c757d", marginBottom: 32 }}
+        >
+          Sign up to start sending money
+        </Text>
+
+        <TextInput
+          label="Full Name"
+          mode="outlined"
+          autoCapitalize="words"
+          value={name}
+          onChangeText={setName}
+          style={{ marginBottom: 16 }}
+        />
+
+        <TextInput
+          label="Email"
+          mode="outlined"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+          style={{ marginBottom: 16 }}
+        />
+
+        <TextInput
+          label="Password"
+          mode="outlined"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          style={{ marginBottom: 16 }}
+        />
+
+        <Button
+          mode="contained"
+          onPress={handleRegister}
+          loading={loading}
+          disabled={loading}
+          buttonColor="#198754"
+          style={{ borderRadius: 8, paddingVertical: 4 }}
+        >
+          Sign Up
+        </Button>
 
         {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <Banner
+            visible
+            icon="alert-circle"
+            style={{ marginTop: 16, backgroundColor: "#f8d7da" }}
+          >
+            {error}
+          </Banner>
         )}
 
-        <TouchableOpacity
-          style={styles.linkButton}
+        <Button
+          mode="text"
           onPress={() => navigation.navigate("Login")}
+          style={{ marginTop: 24 }}
         >
-          <Text style={styles.linkText}>
-            Already have an account?{" "}
-            <Text style={styles.linkBold}>Sign In</Text>
-          </Text>
-        </TouchableOpacity>
+          Already have an account? Sign In
+        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    padding: 24,
-    paddingTop: 80,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#212529",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#6c757d",
-    marginBottom: 32,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#495057",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ced4da",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    backgroundColor: "#f8f9fa",
-    color: "#212529",
-  },
-  button: {
-    backgroundColor: "#198754",
-    borderRadius: 10,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  errorBanner: {
-    backgroundColor: "#f8d7da",
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: "#f5c2c7",
-  },
-  errorText: {
-    color: "#842029",
-    fontSize: 14,
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  linkText: {
-    fontSize: 15,
-    color: "#6c757d",
-  },
-  linkBold: {
-    color: "#4a90d9",
-    fontWeight: "700",
-  },
-});

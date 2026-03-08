@@ -66,7 +66,7 @@ export function getQuote(quoteId, token) {
 }
 
 export function listQuotes(token) {
-  return request("/quotes", { token });
+  return request("/quotes/list", { token });
 }
 
 // --- Transfers ---
@@ -84,5 +84,5 @@ export function getTransfer(transferId, token) {
 }
 
 export function listTransfers(token) {
-  return request("/transfers", { token });
+  return request("/transfers/list", { token });
 }

@@ -1,22 +1,21 @@
 import React, { useState } from "react";
+import { View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import {
-  View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+  Button,
+  Banner,
+  Card,
+  Chip,
+} from "react-native-paper";
 import { createQuote, createTransfer } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import QuoteResult from "../components/QuoteResult";
 
 export default function QuoteScreen() {
-  const { token, user, signOut } = useAuth();
+  const { token, user } = useAuth();
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("EUR");
   const [quote, setQuote] = useState(null);
   const [transfer, setTransfer] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -36,7 +35,7 @@ export default function QuoteScreen() {
     setTransfer(null);
 
     try {
-      const result = await createQuote(parsed, "EUR", token);
+      const result = await createQuote(parsed, currency, token);
       setQuote(result);
     } catch (err) {
       setError(err.message);
@@ -46,7 +45,7 @@ export default function QuoteScreen() {
   };
 
   const handleConfirmTransfer = async () => {
-    if (!quote) return;
+    if (!quote?.id) return;
 
     setConfirming(true);
     setError(null);
@@ -63,196 +62,110 @@ export default function QuoteScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1, backgroundColor: "#fff" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ padding: 24, paddingTop: 60 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Send Money</Text>
-            <Text style={styles.subtitle}>Hi, {user?.name}</Text>
-          </View>
-          <TouchableOpacity onPress={signOut} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Amount (EUR)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 100"
-            keyboardType="decimal-pad"
-            value={amount}
-            onChangeText={setAmount}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleGetQuote}
-          disabled={loading}
-          activeOpacity={0.8}
+        <Text
+          variant="headlineMedium"
+          style={{ fontWeight: "700", marginBottom: 4 }}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Get Quote</Text>
-          )}
-        </TouchableOpacity>
+          Send Money
+        </Text>
+        <Text
+          variant="bodyMedium"
+          style={{ color: "#6c757d", marginBottom: 24 }}
+        >
+          Hi, {user?.name}
+        </Text>
+
+        <TextInput
+          label={`Amount (${currency})`}
+          mode="outlined"
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+          style={{ marginBottom: 12 }}
+        />
+
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
+          {["EUR", "USD", "GBP"].map((c) => (
+            <Chip
+              key={c}
+              selected={currency === c}
+              onPress={() => setCurrency(c)}
+              mode="outlined"
+            >
+              {c}
+            </Chip>
+          ))}
+        </View>
+
+        <Button
+          mode="contained"
+          onPress={handleGetQuote}
+          loading={loading}
+          disabled={loading}
+          style={{ borderRadius: 8, paddingVertical: 4 }}
+        >
+          Get Quote
+        </Button>
 
         {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <Banner
+            visible
+            icon="alert-circle"
+            style={{ marginTop: 16, backgroundColor: "#f8d7da" }}
+          >
+            {error}
+          </Banner>
         )}
 
         {quote && !transfer && (
           <>
             <QuoteResult quote={quote} />
-            <TouchableOpacity
-              style={[
-                styles.confirmButton,
-                confirming && styles.buttonDisabled,
-              ]}
+            <Button
+              mode="contained"
               onPress={handleConfirmTransfer}
+              loading={confirming}
               disabled={confirming}
-              activeOpacity={0.8}
+              buttonColor="#198754"
+              style={{ borderRadius: 8, paddingVertical: 4, marginTop: 16 }}
             >
-              {confirming ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Confirm Transfer</Text>
-              )}
-            </TouchableOpacity>
+              Confirm Transfer
+            </Button>
           </>
         )}
 
         {transfer && (
-          <View style={styles.successBanner}>
-            <Text style={styles.successTitle}>Transfer Created!</Text>
-            <Text style={styles.successText}>
-              Transfer ID: {transfer.id.slice(0, 8)}...
-            </Text>
-            <Text style={styles.successText}>
-              Status: {transfer.status.toUpperCase()}
-            </Text>
-            <Text style={styles.successText}>
-              {transfer.sourceAmount} {transfer.sourceCurrency} →{" "}
-              {transfer.convertedAmount.toFixed(2)} {transfer.targetCurrency}
-            </Text>
-          </View>
+          <Card
+            style={{ marginTop: 20, backgroundColor: "#d1e7dd" }}
+            mode="outlined"
+          >
+            <Card.Content>
+              <Text
+                variant="titleMedium"
+                style={{ color: "#0f5132", fontWeight: "700", marginBottom: 8 }}
+              >
+                Transfer Created!
+              </Text>
+              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+                ID: {transfer.id.slice(0, 8)}...
+              </Text>
+              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+                Status: {transfer.status.toUpperCase()}
+              </Text>
+              <Text variant="bodyMedium" style={{ color: "#0f5132" }}>
+                {transfer.sourceAmount} {transfer.sourceCurrency} →{" "}
+                {transfer.convertedAmount.toFixed(2)} {transfer.targetCurrency}
+              </Text>
+            </Card.Content>
+          </Card>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#212529",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#6c757d",
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  logoutText: {
-    color: "#dc3545",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#495057",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ced4da",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 18,
-    backgroundColor: "#f8f9fa",
-    color: "#212529",
-  },
-  button: {
-    backgroundColor: "#4a90d9",
-    borderRadius: 10,
-    padding: 16,
-    alignItems: "center",
-  },
-  confirmButton: {
-    backgroundColor: "#198754",
-    borderRadius: 10,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  errorBanner: {
-    backgroundColor: "#f8d7da",
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: "#f5c2c7",
-  },
-  errorText: {
-    color: "#842029",
-    fontSize: 14,
-  },
-  successBanner: {
-    backgroundColor: "#d1e7dd",
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: "#badbcc",
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0f5132",
-    marginBottom: 8,
-  },
-  successText: {
-    fontSize: 14,
-    color: "#0f5132",
-    marginBottom: 4,
-  },
-});
