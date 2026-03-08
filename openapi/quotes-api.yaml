@@ -1,0 +1,580 @@
+openapi: 3.0.3
+info:
+  title: FX Quote API
+  description: |
+    Full-featured FX quote and transfer service with JWT authentication (mimicking AWS Cognito).
+    Supports user registration/login, anonymous quote previews, authenticated quote persistence,
+    and transfer confirmation with status tracking.
+  version: 2.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Auth
+    description: User registration, login, and profile (mimics AWS Cognito)
+  - name: Quotes
+    description: FX quote calculation, creation, and retrieval
+  - name: Transfers
+    description: Confirm quotes into transfers and track status
+
+paths:
+  # ──────────────── Auth ────────────────
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              email: user@example.com
+              password: SecurePass1
+              name: John Doe
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+              example:
+                id: 550e8400-e29b-41d4-a716-446655440000
+                email: user@example.com
+                name: John Doe
+                createdAt: "2026-03-08T10:00:00.000Z"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required fields: email, password, name"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "A user with this email already exists"
+        "422":
+          description: Password too short (min 8 characters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Password must be at least 8 characters"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and receive a JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: user@example.com
+              password: SecurePass1
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              example:
+                accessToken: eyJhbGciOiJIUzI1NiIs...
+                tokenType: Bearer
+                expiresIn: 3600
+                user:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  email: user@example.com
+                  name: John Doe
+        "400":
+          description: Missing email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required fields: email, password"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Invalid email or password"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────── Quotes ────────────────
+  /quotes:
+    post:
+      tags: [Quotes]
+      summary: Anonymous quote preview
+      description: Calculate an FX quote without authentication. The quote is not persisted.
+      operationId: previewQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+            example:
+              amount: 100
+              currency: EUR
+      responses:
+        "200":
+          description: Quote calculated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+              example:
+                sourceAmount: 100
+                sourceCurrency: EUR
+                targetCurrency: TND
+                fxRate: 3.35
+                fee: 2.5
+                convertedAmount: 326.625
+                estimatedDelivery: 5 minutes
+        "400":
+          description: Missing required fields or invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required field: amount"
+        "422":
+          description: Business validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                negativeAmount:
+                  summary: Negative or zero amount
+                  value:
+                    error: "Amount must be a positive number"
+                unsupportedCurrency:
+                  summary: Unsupported currency
+                  value:
+                    error: "Unsupported currency: XYZ. Supported: EUR, USD, GBP"
+
+  /quotes/create:
+    post:
+      tags: [Quotes]
+      summary: Create and persist a quote
+      description: Calculate and save a quote for the authenticated user. Returns the quote with an ID and status.
+      operationId: createQuote
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+      responses:
+        "201":
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedQuote"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required field: currency"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Unsupported currency: XYZ. Supported: EUR, USD, GBP"
+
+  /quotes/list:
+    get:
+      tags: [Quotes]
+      summary: List user's quotes
+      operationId: listQuotes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Array of quotes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quotes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SavedQuote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /quotes/{id}:
+    get:
+      tags: [Quotes]
+      summary: Get a quote by ID
+      operationId: getQuote
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedQuote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Quote not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Quote not found"
+
+  # ──────────────── Transfers ────────────────
+  /transfers:
+    post:
+      tags: [Transfers]
+      summary: Confirm a quote into a transfer
+      description: Converts an open quote into a live transfer. The quote is marked as confirmed and cannot be reused.
+      operationId: createTransfer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+            example:
+              quoteId: 550e8400-e29b-41d4-a716-446655440000
+      responses:
+        "201":
+          description: Transfer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "400":
+          description: Missing quoteId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required field: quoteId"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Quote not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Quote not found"
+        "409":
+          description: Quote already used for a transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "This quote has already been used for a transfer"
+
+  /transfers/list:
+    get:
+      tags: [Transfers]
+      summary: List user's transfers
+      operationId: listTransfers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Array of transfers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Transfer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /transfers/{id}:
+    get:
+      tags: [Transfers]
+      summary: Get a transfer by ID
+      operationId: getTransfer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transfer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Transfer not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Transfer not found"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from POST /auth/login
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Missing or invalid authorization token"
+
+  schemas:
+    # ── Auth ──
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: SecurePass1
+        name:
+          type: string
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Token lifetime in seconds
+          example: 3600
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Quotes ──
+    QuoteRequest:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: number
+          description: Amount to send in source currency
+          minimum: 0.01
+          example: 100
+        currency:
+          type: string
+          enum: [EUR, USD, GBP]
+          description: ISO 4217 source currency code
+          example: EUR
+
+    QuoteResponse:
+      type: object
+      properties:
+        sourceAmount:
+          type: number
+          example: 100
+        sourceCurrency:
+          type: string
+          example: EUR
+        targetCurrency:
+          type: string
+          example: TND
+        fxRate:
+          type: number
+          example: 3.35
+        fee:
+          type: number
+          example: 2.5
+        convertedAmount:
+          type: number
+          description: Amount the recipient receives in the target currency.
+          example: 326.625
+        estimatedDelivery:
+          type: string
+          description: Estimated delivery time.
+          example: 5 minutes
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+    SavedQuote:
+      allOf:
+        - $ref: "#/components/schemas/QuoteResponse"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            userId:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [open, confirmed]
+              description: Quote status — "open" until used for a transfer
+            createdAt:
+              type: string
+              format: date-time
+
+    # ── Transfers ──
+    TransferRequest:
+      type: object
+      required: [quoteId]
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+          description: ID of the quote to confirm
+
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        sourceAmount:
+          type: number
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        fxRate:
+          type: number
+        fee:
+          type: number
+        convertedAmount:
+          type: number
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        estimatedDelivery:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

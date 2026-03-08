@@ -1,0 +1,21 @@
+{
+  "name": "fx-quote-backend",
+  "version": "1.0.0",
+  "description": "FX Quote Service — serverless backend",
+  "main": "handlers/quoteHandler.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  }
+}
